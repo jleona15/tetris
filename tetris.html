@@ -1,0 +1,383 @@
+<html>
+	<head>
+		<title>Webpage</title>
+	</head>
+	<body>
+		<h1>Tetris</h1>
+        <p id = "debug">Z and X to rotate, arrow keys to move.</p>
+		<canvas id="myCanvas" width="200" height="400" style="border:1px solid #d3d3d3;"></canvas>
+		<script>
+            var c;
+            var ctx;
+            
+            var direction;
+            
+            var board;
+            var x;
+            var y;
+            
+            var gameTick;
+        
+            function init() {
+                //var canvas = document.getElementById("myCanvas");
+                //console.log(canvas);
+                document.addEventListener("keydown", keyHandlerInstancePasser);
+                
+                c = document.getElementById("myCanvas");
+                ctx = c.getContext("2d");
+
+                direction = "";
+                
+                board = new Board();
+                ctx.fillStyle = 'black';
+                
+                myVar = setInterval("draw()", 16.7);
+                
+                gameTick = 0;
+            }
+
+            class Tetromino {
+                    constructor() {
+                        var type = parseInt((Math.random()*7).toString());
+                        this.position = [5,3];
+                        this.shape = Array(4);
+                        this.color = "";
+
+                        switch(type) {
+                            //Line piece
+                            case 0:
+                                this.shape = [[0,0], [0,-1], [0,1], [0,2]];
+                                this.color = "cyan";
+                                break;
+                            //Square piece
+                            case 1:
+                                this.shape = [[0,0], [0,-1], [1,-1], [1,0]];
+                                this.color = "yellow";
+                                break;
+                            //L piece
+                            case 2:
+                                this.shape = [[0,0], [0,-1], [0,1], [1,1]];
+                                this.color = "orange";
+                                break;
+                            //Reverse L piece
+                            case 3:
+                                this.shape = [[0,0], [0,-1], [0,1], [-1,1]];
+                                this.color = "blue";
+                                break;
+                            //S piece
+                            case 4:
+                                this.shape = [[0,0], [0,-1], [1,0], [1,1]];
+                                this.color = "red";
+                                break;
+                            //Reverse S piece
+                            case 5:
+                                this.shape = [[0,0], [1,0], [1,-1], [0,1]];
+                                this.color = "green";
+                                break;
+                            //T piece
+                            case 6:
+                                this.shape = [[0,0], [1,0], [-1,0], [0,-1]];
+                                this.color = "purple";
+                                break;
+                        }
+                    }
+                    
+
+                }
+
+            class Board {
+                constructor() {
+                    this.arr = new Array(10);
+                    this.tet = new Tetromino();
+                    //console.log(this.tet);
+                    for(var i = 0; i < 10; ++i) {
+                        this.arr[i] = new Array(20);
+                        for(var j = 0; j < 20; ++j) {
+                            this.arr[i][j] = "";
+                        }
+                    }
+                    this.img = ctx.createImageData(200,400);
+                }
+                
+                checkCollision() {
+                    var collisionFlag = false;
+
+                    for(var i = 0; i < 4; ++i) {
+                        console.log(this);
+                        if(this.tet.shape[i][0] + this.tet.position[0] < 0 || this.tet.shape[i][0] + this.tet.position[0] >= 10 || this.tet.shape[i][1] + this.tet.position[1] < 0 || this.tet.shape[i][1] + this.tet.position[1] >= 20) {
+                            collisionFlag = true;
+                            break;
+                        }
+                        if(this.arr[this.tet.shape[i][0] + this.tet.position[0]][this.tet.shape[i][1] + this.tet.position[1]] != "") {
+                            collisionFlag = true;
+                            break;
+                        }
+                    }
+                    
+                    return collisionFlag;
+                }
+                
+                rotateLeft() {
+                    for (var i = 0; i < 4; ++i) {
+                        var temp = this.tet.shape[i][0];
+                        this.tet.shape[i][0] = this.tet.shape[i][1];
+                        this.tet.shape[i][1] = -1 * temp;
+                    }
+
+                    if(this.checkCollision()) {
+                        ++this.tet.position[0];
+                        if(this.checkCollision()) {
+                            this.tet.position[0] -= 2;
+                            if(this.checkCollision()) {
+                                ++this.tet.position[0];
+                                --this.tet.position[1];
+                                if(this.checkCollision()) {
+                                    this.rotateRight();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                rotateRight() {
+                    for (var i = 0; i < 4; ++i) {
+                        var temp = this.tet.shape[i][0];
+                        this.tet.shape[i][0] = -1 * this.tet.shape[i][1];
+                        this.tet.shape[i][1] = temp;
+                    }
+                    
+                    if(this.checkCollision()) {
+                        ++this.tet.position[0];
+                        if(this.checkCollision()) {
+                            this.tet.position[0] -= 2;
+                            if(this.checkCollision()) {
+                                ++this.tet.position[0];
+                                --this.tet.position[1];
+                                if(this.checkCollision()) {
+                                    this.rotateLeft();
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                placeTetromino() {
+                    console.log("Entered place function");
+                    for(var i = 0; i < 4; ++i) {
+                        if(this.tet.position[1] + this.tet.shape[i][1] < 0) {
+                            console.log("GAME END CALLED");
+                            gameEnd();
+                        } else {
+                            this.arr[this.tet.position[0] + this.tet.shape[i][0]][this.tet.position[1] + this.tet.shape[i][1]] = this.tet.color;
+                        }
+                    }
+                    
+                    var moveAboveDownFlag = true;
+                    
+                    console.log("Start of test loop");
+                    for(var j = -1; j <= 2; ++j) {
+                        moveAboveDownFlag = true;
+                        if(j + this.tet.position[1] > 19) {
+                            moveAboveDownFlag = false;
+                            break;
+                        }
+                        for(var i = 0; i < 10; ++i) {
+                            if(this.arr[i][j + this.tet.position[1]] == "") {
+                                moveAboveDownFlag = false;
+                                console.log("Found gap in layer");
+                                console.log([i,j + this.tet.position[1]]);
+                                break;
+                            }
+                        }
+                        
+                        if(moveAboveDownFlag) {
+                            console.log("Move blocks down tripped!");
+                            for(var j2 = j + this.tet.position[1]; j2 - 1 >= 0; --j2) {
+                                console.log("Moving layer");
+                                console.log(j2);
+                                for(var i = 0; i < 10; ++i) {
+                                    this.arr[i][j2] = this.arr[i][j2 - 1];
+                                }
+                            }
+                            
+                            for(var i = 0; i < 10; ++i) {
+                                this.arr[i][0] = "";
+                            }
+                        }
+                    }
+                    
+                    this.tet = new Tetromino();
+                }
+
+                drawBoard() {
+                    for(var i = 0; i < 10; ++i) {
+                        for(var j = 0; j < 20; ++j) {
+                            drawBlock(i, j, this.arr[i][j]);
+                        }
+                    }
+                    //console.log(this.tet)
+                    for(var i = 0; i < 4; ++i) {
+                        //console.log(this.tet.position[0]);
+                        drawBlock(this.tet.position[0] + this.tet.shape[i][0], this.tet.position[1] + this.tet.shape[i][1], this.tet.color);
+                    }
+                }
+
+                keyHandler(e) {
+                    //console.log("Got to keyHandler");
+                    var keepAsTet = true;
+                    switch(e.keyCode) {
+                        case 37:
+                            //console.log("Got left!");
+                            this.moveTetromino("left");
+                            break;
+                        case 39:
+                            this.moveTetromino("right");
+                            break;
+                        case 40:
+                            this.moveTetromino("down");
+                            break;
+                        case 90:
+                            this.rotateLeft();
+                            break;
+                        case 88:
+                            this.rotateRight();
+                    }
+                    
+                }
+
+                moveTetromino(direction) {
+                    switch(direction) {
+                        case "left":
+                            //console.log("Going left now!");
+                            for(var i = 0; i < 4; ++i) {
+                                //console.log(this.arr);
+                                
+                                //console.log(this.tet.position[0] - 1 + this.tet.shape[i][0]);
+                                //console.log(this.tet.position[1] + this.tet.shape[i][1]);
+                                
+                                if (this.tet.position[0] - 1 + this.tet.shape[i][0] < 0 || 
+                                    this.arr[this.tet.position[0] - 1 + this.tet.shape[i][0]][this.tet.position[1] + this.tet.shape[i][1]] != "") {
+                                    return;
+                                }
+                            }
+                            
+                            --this.tet.position[0];
+                            break;
+                        case "right":
+                            for(var i = 0; i < 4; ++i) {
+                                //console.log(this.arr);
+                                
+                                //console.log(this.tet.position[0] + 1 + this.tet.shape[i][0]);
+                                //console.log(this.tet.position[1] + this.tet.shape[i][1]);
+                                
+                                if (this.tet.position[0] + 1 + this.tet.shape[i][0] > 9 || 
+                                    this.arr[this.tet.position[0] + 1 + this.tet.shape[i][0]][this.tet.position[1] + this.tet.shape[i][1]] != "") {
+                                    return;
+                                }
+                            }
+                            
+                            ++this.tet.position[0];
+                            break;
+                        case "down":
+                            for(var i = 0; i < 4; ++i) {
+                                //console.log(this.arr);
+                                
+                                //console.log(this.tet.position[0] + this.tet.shape[i][0]);
+                                //console.log(this.tet.position[1] + 1 + this.tet.shape[i][1]);
+                                
+                                if (this.tet.position[1] + 1 + this.tet.shape[i][1] > 19 || 
+                                    this.arr[this.tet.position[0] + this.tet.shape[i][0]][this.tet.position[1] + 1 + this.tet.shape[i][1]] != "") {
+                                    //console.log("Returning false from down placement")
+                                    //console.log(this.tet);
+                                    //console.log(this.tet.position[1] + 1 + this.tet.shape[i][0] > 20);
+                                    //console.log(this.arr[this.tet.position[0] + this.tet.shape[i][0]][this.tet.position[1] + 1 + this.tet.shape[i][1]]);
+                                    this.placeTetromino();
+                                    return;
+                                }
+                            }
+                            
+                            ++this.tet.position[1];
+                            gameTick = 0;
+                            break;
+                    }
+                }
+            }
+            
+            function draw() {
+                ctx.clearRect(0,0,200,400);
+                ++gameTick;
+                
+                if(gameTick > 120) {
+                    board.moveTetromino("down");
+                }
+                
+                ctx.putImageData(board.img, 0, 0);
+                board.drawBoard();
+            }
+            function drawBlock(x, y, color) {
+                var red = 0;
+                var green = 0;
+                var blue = 0;
+
+                switch(color) {
+                    case "red":
+                        red = 255;
+                        green = 0;
+                        blue = 0;
+                        break;
+                    case "cyan":
+                        red = 0;
+                        green = 255;
+                        blue = 255;
+                        break;
+                    case "blue":
+                        red = 0;
+                        green = 0;
+                        blue = 255;
+                        break;
+                    case "yellow":
+                        red = 255;
+                        green = 255;
+                        blue = 0;
+                        break;
+                    case "orange":
+                        red = 255;
+                        green = 150;
+                        blue = 0;
+                        break;
+                    case "green":
+                        red = 0;
+                        green = 255;
+                        blue = 0;
+                        break;
+                    case "purple":
+                        red = 255;
+                        green = 0;
+                        blue = 255;
+                        break;
+                    case "":
+                        red = 255;
+                        green = 255;
+                        blue = 255;
+                }
+
+                for (var i = 0; i < 20; ++i) {
+                    for (var j = 0; j < 20; ++j) {
+                        board.img.data[(i * 4) + (j * 200 * 4) + (x * 20 * 4) + (y * 4000 * 4) + 0] = red;
+                        board.img.data[(i * 4) + (j * 200 * 4) + (x * 20 * 4) + (y * 4000 * 4) + 1] = green;
+                        board.img.data[(i * 4) + (j * 200 * 4) + (x * 20 * 4) + (y * 4000 * 4) + 2] = blue;
+                        board.img.data[(i * 4) + (j * 200 * 4) + (x * 20 * 4) + (y * 4000 * 4) + 3] = 255;
+                    }
+                }
+            }
+
+            function keyHandlerInstancePasser(e) {
+                //console.log("Got to keyHandlerInstancePasser");
+                //console.log(e);
+                board.keyHandler(e);
+            }
+
+            init();
+		</script>
+	</body>
+</html>
